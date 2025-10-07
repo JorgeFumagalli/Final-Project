@@ -34,8 +34,9 @@ SERIES = {
     "ipca_mensal": 433,          # IPCA - variação mensal (% a.m.)
     
     # Situação das Famílias
-    "comprometimento_renda": 19882,  # Comprom. de renda das famílias com SFN (%) - ATÉ 2021
-    "endividamento_familias": 19881,  # Endividamento das famílias com SFN (%) - Até 2021
+    "comprometimento_renda_sem_ajuste": 29265,  # Comprometimento de renda das famílias com o serviço da dívida sem ajuste sazonalidade - %
+    "comprometimento_renda": 29034,  # Comprometimento de renda das famílias com o serviço da dívida com o Sistema Financeiro Nacional - Com ajuste sazonal
+    "endividamento_familias": 29037,  # Endividamento das famílias com SFN (%) - Até 2021
     "inadimplencia_familias": 21082,  # Inadimplência das famílias (%)
     
     # Componentes de Renda (para análise complementar)
