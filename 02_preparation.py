@@ -21,11 +21,8 @@ DATA_FILE = "macro_credito_bcb_com_credito_pib_reconstruido.csv"
 OUTPUT_DIR = Path(r"C:\Users\jorge\Downloads\model_results")
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-DEFAULT_RATE_COLUMNS = [
+DEFAULT_RATE_COLUMN = [
     "inadimpl_cartao_total",    # Inadimplência cartão total
-    "inadimpl_cartao_rot",      # Inadimplência cartão rotativo
-    "inadimpl_cartao_parc",     # Inadimplência cartão parcelado
-    "inadimplencia_familias",   # Inadimplência das famílias
 ]
 
 # =============================================================================
@@ -234,7 +231,7 @@ def prepare_data_for_modeling(target_variable):
 
 if __name__ == "__main__":
     # Teste da preparação de dados
-    for target_var in DEFAULT_RATE_COLUMNS:
+    for target_var in DEFAULT_RATE_COLUMN:
         data_dict = prepare_data_for_modeling(target_var)
         if data_dict:
             print(f"Dados preparados com sucesso para {target_var}")
