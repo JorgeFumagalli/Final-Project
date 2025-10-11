@@ -10,147 +10,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+
+DATA_DIR = Path(r"C:\Users\jorge\Downloads")
+OUTPUT_DIR = Path(r"C:\Users\jorge\Downloads\model_results")
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+DEFAULT_RATE_COLUMNS = [
+    "inadimpl_cartao_total",    # Inadimplência cartão total
+]
+
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.metrics import roc_curve, auc, accuracy_score, precision_score, recall_score, confusion_matrix
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, LogisticRegression
 from sklearn.svm import SVR, SVC
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
 import warnings
 warnings.filterwarnings('ignore')
-
-# Configurações
-OUTPUT_DIR = Path(r'C:\Users\jorge\Downloads\model_results')
-OUTPUT_DIR.mkdir(exist_ok=True)
-
-DEFAULT_RATE_COLUMNS = [
-    'inadimpl_cartao_total',
-    'inadimpl_cartao_rot', 
-    'inadimpl_cartao_parc',
-    'inadimplencia_familias'
-]
-
-def load_and_prepare_data():
-    """Carrega e prepara os dados econômicos"""
-    try:
-        # Tentar carregar o arquivo de dados
-        data_file = OUTPUT_DIR / 'dados_economicos_bcb.csv'
-        if not data_file.exists():
-            print(f"Arquivo {data_file} não encontrado!")
-            return None
-        
-        df = pd.read_csv(data_file, parse_dates=['data'])
-        print(f"Dados carregados: {df.shape}")
-        print(f"Período: {df['data'].min()} a {df['data'].max()}")
-        
-        # Verificar colunas disponíveis
-        available_columns = [col for col in DEFAULT_RATE_COLUMNS if col in df.columns]
-        print(f"Colunas de inadimplência disponíveis: {available_columns}")
-        
-        return df
-        
-    except Exception as e:
-        print(f"Erro ao carregar dados: {e}")
-        return None
-
-def prepare_data_for_modeling(target_variable):
-    """Prepara dados para modelagem"""
-    df = load_and_prepare_data()
-    if df is None:
-        return None
-    
-    if target_variable not in df.columns:
-        print(f"Variável {target_variable} não encontrada nos dados!")
-        return None
-    
-    # Remover linhas com valores nulos na variável target
-    df_clean = df.dropna(subset=[target_variable]).copy()
-    
-    if len(df_clean) < 50:
-        print(f"Dados insuficientes para {target_variable}: {len(df_clean)} observações")
-        return None
-    
-    print(f"Preparando dados para {target_variable}: {len(df_clean)} observações")
-    
-    # Selecionar features (todas as colunas numéricas exceto a target e data)
-    numeric_columns = df_clean.select_dtypes(include=[np.number]).columns.tolist()
-    feature_columns = [col for col in numeric_columns if col != target_variable]
-    
-    # Remover colunas com muitos valores nulos
-    for col in feature_columns.copy():
-        if df_clean[col].isnull().sum() / len(df_clean) > 0.5:
-            feature_columns.remove(col)
-            print(f"Removendo coluna {col} (muitos valores nulos)")
-    
-    # Preencher valores nulos restantes
-    df_clean[feature_columns] = df_clean[feature_columns].fillna(method='ffill').fillna(method='bfill')
-    df_clean = df_clean.dropna()
-    
-    if len(df_clean) < 30:
-        print(f"Dados insuficientes após limpeza: {len(df_clean)} observações")
-        return None
-    
-    # Preparar dados para regressão
-    X = df_clean[feature_columns].values
-    y = df_clean[target_variable].values
-    dates = df_clean['data'].values
-    
-    # Normalizar features
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
-    # Split dos dados
-    test_size = min(0.3, max(0.1, 20/len(df_clean)))
-    X_train, X_test, y_train, y_test, dates_train, dates_test = train_test_split(
-        X_scaled, y, dates, test_size=test_size, random_state=42, shuffle=False
-    )
-    
-    # Preparar dados para classificação (subida/descida)
-    y_class = (np.diff(y, prepend=y[0]) > 0).astype(int)
-    X_train_class, X_test_class, y_train_class, y_test_class = train_test_split(
-        X_scaled, y_class, test_size=test_size, random_state=42, shuffle=False
-    )
-    
-    # Preparar sequências para LSTM
-    def create_sequences(data, target, seq_length=10):
-        X_seq, y_seq = [], []
-        for i in range(seq_length, len(data)):
-            X_seq.append(data[i-seq_length:i])
-            y_seq.append(target[i])
-        return np.array(X_seq), np.array(y_seq)
-    
-    seq_length = min(10, len(X_train)//4)
-    if seq_length >= 3:
-        X_train_seq, y_train_seq = create_sequences(X_train, y_train, seq_length)
-        X_test_seq, y_test_seq = create_sequences(X_test, y_test, seq_length)
-        dates_lstm = dates_test[seq_length:]
-    else:
-        X_train_seq = X_train.reshape(X_train.shape[0], 1, X_train.shape[1])
-        X_test_seq = X_test.reshape(X_test.shape[0], 1, X_test.shape[1])
-        y_train_seq, y_test_seq = y_train, y_test
-        dates_lstm = dates_test
-    
-    return {
-        'target_variable': target_variable,
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test,
-        'dates_train': dates_train,
-        'dates_test': dates_test,
-        'X_train_class': X_train_class,
-        'X_test_class': X_test_class,
-        'y_train_class': y_train_class,
-        'y_test_class': y_test_class,
-        'X_train_seq': X_train_seq,
-        'X_test_seq': X_test_seq,
-        'y_train_seq': y_train_seq,
-        'y_test_seq': y_test_seq,
-        'dates_lstm': dates_lstm,
-        'feature_columns': feature_columns,
-        'scaler': scaler
-    }
 
 # Deep Learning imports
 try:
@@ -162,6 +38,121 @@ try:
 except ImportError:
     print("TensorFlow não disponível. Modelos de Deep Learning serão pulados.")
     TENSORFLOW_AVAILABLE = False
+
+def load_prepared_data(target_variable):
+    """Carrega dados preparados do arquivo Excel gerado pelo script anterior"""
+    print(f"\n{'='*80}")
+    print(f"CARREGANDO DADOS PREPARADOS PARA: {target_variable}")
+    print(f"{'='*80}")
+    
+    input_file = OUTPUT_DIR / f'prepared_data_{target_variable}.xlsx'
+    
+    if not input_file.exists():
+        print(f"Arquivo {input_file} não encontrado.")
+        print(f"Execute o script 02_prepare_data.py primeiro!")
+        return None
+    
+    # Carregar dados do Excel
+    feature_df = pd.read_excel(input_file, sheet_name='feature_df')
+    metadata = pd.read_excel(input_file, sheet_name='metadata')
+    feature_cols_df = pd.read_excel(input_file, sheet_name='feature_cols')
+    
+    # Extrair metadados
+    metadata_dict = dict(zip(metadata['parameter'], metadata['value']))
+    split_idx = int(metadata_dict['split_idx'])
+    sequence_length = int(metadata_dict['sequence_length'])
+    feature_cols = feature_cols_df['feature_cols'].tolist()
+    
+    print(f"Dados carregados: {len(feature_df)} observações")
+    print(f"Features: {len(feature_cols)} colunas")
+    
+    # Reconstruir arrays
+    X = feature_df[feature_cols].values
+    y = feature_df[target_variable].values
+    dates = pd.to_datetime(feature_df['data']).values
+    
+    # Split temporal
+    X_train, X_test = X[:split_idx], X[split_idx:]
+    y_train, y_test = y[:split_idx], y[split_idx:]
+    dates_test = dates[split_idx:]
+    
+    # Normalização
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # Preparar targets de classificação
+    def create_classification_target(y_values):
+        y_diff = np.diff(y_values)
+        return (y_diff > 0).astype(int)
+    
+    y_train_class = create_classification_target(y_train)
+    y_test_class = create_classification_target(y_test)
+    
+    X_train_class = X_train_scaled[1:]
+    X_test_class = X_test_scaled[1:]
+    dates_test_class = dates_test[1:]
+    
+    # Preparar sequências para LSTM
+    def prepare_sequences(data, target_col, seq_length):
+        feature_data = data[feature_cols].values
+        target_data = data[target_col].values
+        
+        X_seq, y_seq = [], []
+        for i in range(seq_length, len(data)):
+            X_seq.append(feature_data[i-seq_length:i])
+            y_seq.append(target_data[i])
+        
+        return np.array(X_seq), np.array(y_seq)
+    
+    X_seq, y_seq = prepare_sequences(feature_df, target_variable, sequence_length)
+    
+    split_seq = int(len(X_seq) * 0.8)
+    X_train_seq, X_test_seq = X_seq[:split_seq], X_seq[split_seq:]
+    y_train_seq, y_test_seq = y_seq[:split_seq], y_seq[split_seq:]
+    
+    # Normalizar sequências
+    scaler_seq = MinMaxScaler()
+    X_train_seq_scaled = scaler_seq.fit_transform(X_train_seq.reshape(-1, X_train_seq.shape[-1])).reshape(X_train_seq.shape)
+    X_test_seq_scaled = scaler_seq.transform(X_test_seq.reshape(-1, X_test_seq.shape[-1])).reshape(X_test_seq.shape)
+    
+    dates_lstm = dates[split_seq + sequence_length:]
+    
+    print(f"Dados reconstruídos com sucesso!")
+    print(f"Treino: {len(X_train)} observações")
+    print(f"Teste: {len(X_test)} observações")
+    
+    return {
+        'target_variable': target_variable,
+        'feature_df': feature_df,
+        'feature_cols': feature_cols,
+        
+        # Dados de regressão
+        'X_train': X_train_scaled,
+        'X_test': X_test_scaled,
+        'y_train': y_train,
+        'y_test': y_test,
+        'dates_test': dates_test,
+        
+        # Dados de classificação
+        'X_train_class': X_train_class,
+        'X_test_class': X_test_class,
+        'y_train_class': y_train_class,
+        'y_test_class': y_test_class,
+        'dates_test_class': dates_test_class,
+        
+        # Dados para LSTM
+        'X_train_seq': X_train_seq_scaled,
+        'X_test_seq': X_test_seq_scaled,
+        'y_train_seq': y_train_seq,
+        'y_test_seq': y_test_seq,
+        'dates_lstm': dates_lstm,
+        'sequence_length': sequence_length,
+        
+        # Scalers
+        'scaler': scaler,
+        'scaler_seq': scaler_seq
+    }
 
 # =============================================================================
 # SEÇÃO 1: MODELOS SVM (SUPPORT VECTOR MACHINE)
@@ -614,8 +605,7 @@ def main():
         print(f"ANALISANDO: {target_variable}")
         print(f"{'='*80}")
         
-        # Preparar dados
-        data_dict = prepare_data_for_modeling(target_variable)
+        data_dict = load_prepared_data(target_variable)
         if data_dict is None:
             continue
         

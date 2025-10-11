@@ -197,6 +197,24 @@ def prepare_data_for_modeling(target_variable):
     
     dates_lstm = dates[split_seq + sequence_length:]
     
+    output_file = OUTPUT_DIR / f'prepared_data_{target_variable}.xlsx'
+    
+    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+        # Salvar feature_df
+        feature_df.to_excel(writer, sheet_name='feature_df', index=False)
+        
+        # Salvar metadados
+        metadata = pd.DataFrame({
+            'parameter': ['target_variable', 'split_idx', 'sequence_length', 'n_features'],
+            'value': [target_variable, split_idx, sequence_length, len(feature_cols)]
+        })
+        metadata.to_excel(writer, sheet_name='metadata', index=False)
+        
+        # Salvar feature_cols
+        pd.DataFrame({'feature_cols': feature_cols}).to_excel(writer, sheet_name='feature_cols', index=False)
+    
+    print(f"\nDados preparados salvos em: {output_file}")
+    
     return {
         'target_variable': target_variable,
         'feature_df': feature_df,

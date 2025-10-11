@@ -38,6 +38,7 @@ SERIES = {
     "comprometimento_renda": 29034,  # Comprometimento de renda das famílias com o serviço da dívida com o Sistema Financeiro Nacional - Com ajuste sazonal
     "endividamento_familias": 29037,  # Endividamento das famílias com SFN (%) - Até 2021
     "inadimplencia_familias": 21082,  # Inadimplência das famílias (%)
+}    
 
 START = "2015-01-01"
 END   = "2025-07-01"
