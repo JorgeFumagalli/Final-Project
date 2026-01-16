@@ -4,6 +4,7 @@
 Versão alinhada ao TCC – Modelagem preditiva (regressão)
 
 Modelos:
+    - Regressão Linear
     - SVR
     - XGBoost
     - MLP
@@ -36,6 +37,7 @@ from pathlib import Path
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
+from sklearn.linear_model import LinearRegression
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
@@ -106,20 +108,65 @@ def make_lstm_model(input_shape) -> Model:
     model.compile(optimizer='adam', loss='mse')
     return model
 
+#%% Função de estilo ABNT para gráficos
+def format_abnt_axes(ax, xlabel: str = "", ylabel: str = "", show_legend: bool = True):
+    # Títulos dos eixos
+    if xlabel:
+        ax.set_xlabel(xlabel,
+                      fontfamily="Arial",
+                      fontsize=11,
+                      color="black")
+    if ylabel:
+        ax.set_ylabel(ylabel,
+                      fontfamily="Arial",
+                      fontsize=11,
+                      color="black")
+
+    # Ticks dos eixos
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
+        label.set_fontfamily("Arial")
+        label.set_fontsize(9)
+        label.set_color("black")
+
+    # Sem grade
+    ax.grid(False)
+
+    # Fundo branco
+    ax.set_facecolor("white")
+    if ax.figure is not None:
+        ax.figure.set_facecolor("white")
+
+    # Remover bordas superior e direita
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    # Eixos principal horizontal e vertical: linha preta 1,5 pt
+    for spine in ["bottom", "left"]:
+        ax.spines[spine].set_linewidth(1.5)
+        ax.spines[spine].set_color("black")
+
+    # Legenda sem moldura
+    if show_legend:
+        ax.legend(frameon=False,
+                  prop={"family": "Arial", "size": 9})
+
 #%% Funções de gráficos básicos
 def plot_real_pred(dates, y_true, y_pred, title, outpath):
-    """Gráfico Real vs Predito para um modelo/período."""
-    plt.figure(figsize=(12, 6))
-    plt.plot(dates, y_true, label="Real", linewidth=2)
-    plt.plot(dates, y_pred, label="Predito", linestyle="--", linewidth=2)
-    plt.title(title)
-    plt.xlabel("Data")
-    plt.ylabel("Taxa de inadimplência (%)")
-    plt.grid(True, linestyle="--", alpha=0.4)
-    plt.legend()
+    """Gráfico Real vs Predito para um modelo/período (padrão ABNT)."""
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(dates, y_true, label="Real", linewidth=2)
+    ax.plot(dates, y_pred, label="Predito", linestyle="--", linewidth=2)
+
+    # Título do gráfico não é usado (vai na legenda do TCC)
+    format_abnt_axes(ax,
+                     xlabel="Data",
+                     ylabel="Taxa de inadimplência (%)",
+                     show_legend=True)
+
     plt.tight_layout()
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
-    plt.close()
+    plt.close(fig)
 
 
 def plot_metrics_bars(dfres: pd.DataFrame, tag: str, outdir: Path):
@@ -129,20 +176,24 @@ def plot_metrics_bars(dfres: pd.DataFrame, tag: str, outdir: Path):
         - R²
         - MAPE
         - DA
-    para um dado período (tag).
+    para um dado período (tag), no padrão ABNT.
     """
     metrics = ["MSE", "R2", "MAPE", "DA"]
+
     for m in metrics:
-        plt.figure(figsize=(8, 5))
-        plt.bar(dfres["Model"], dfres[m])
-        plt.title(f"{tag} – {m} por modelo")
-        plt.xlabel("Modelo")
-        plt.ylabel(m)
-        plt.grid(axis="y", linestyle="--", alpha=0.4)
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.bar(dfres["Model"], dfres[m])
+
+        ylabel = m if m != "R2" else "R²"
+        format_abnt_axes(ax,
+                         xlabel="Modelo",
+                         ylabel=ylabel,
+                         show_legend=False)
+
         plt.tight_layout()
         outpath = outdir / f"{tag}_metric_{m}.png"
         plt.savefig(outpath, dpi=300, bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
 
 #%% Gráficos comparativos FULL vs EXCL
 def plot_full_vs_excl_series(df_full: pd.DataFrame,
@@ -150,19 +201,21 @@ def plot_full_vs_excl_series(df_full: pd.DataFrame,
                              date_col: str,
                              target: str,
                              outdir: Path):
-    """Compara a série de inadimplência FULL vs EXCL em um único gráfico."""
-    plt.figure(figsize=(12, 6))
-    plt.plot(df_full[date_col], df_full[target], label="FULL", linewidth=2)
-    plt.plot(df_excl[date_col], df_excl[target], label="EXCL (sem 2019–2021)", linewidth=2)
-    plt.title("Comparação da série de inadimplência – FULL vs EXCL")
-    plt.xlabel("Data")
-    plt.ylabel("Taxa de inadimplência (%)")
-    plt.legend()
-    plt.grid(True, linestyle="--", alpha=0.4)
+    """Compara a série de inadimplência FULL vs EXCL em um único gráfico (padrão ABNT)."""
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(df_full[date_col], df_full[target], label="FULL", linewidth=2)
+    ax.plot(df_excl[date_col], df_excl[target], label="EXCL (sem 2019–2021)", linewidth=2)
+
+    format_abnt_axes(ax,
+                     xlabel="Data",
+                     ylabel="Taxa de inadimplência (%)",
+                     show_legend=True)
+
     plt.tight_layout()
     outpath = outdir / "FULL_vs_EXCL_inadimplencia.png"
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
-    plt.close()
+    plt.close(fig)
 
 
 def plot_compare_metric_full_excl(df_full_res: pd.DataFrame,
@@ -171,7 +224,7 @@ def plot_compare_metric_full_excl(df_full_res: pd.DataFrame,
                                   outdir: Path):
     """
     Compara uma métrica (MSE, R2, MAPE, DA) entre FULL e EXCL para cada modelo.
-    Gera gráfico de barras agrupadas.
+    Gera gráfico de barras agrupadas (padrão ABNT).
     """
     mf = df_full_res[["Model", metric]].rename(columns={metric: f"{metric}_FULL"})
     me = df_excl_res[["Model", metric]].rename(columns={metric: f"{metric}_EXCL"})
@@ -180,19 +233,23 @@ def plot_compare_metric_full_excl(df_full_res: pd.DataFrame,
     x = np.arange(len(merged["Model"]))
     width = 0.35
 
-    plt.figure(figsize=(10, 5))
-    plt.bar(x - width/2, merged[f"{metric}_FULL"], width, label="FULL")
-    plt.bar(x + width/2, merged[f"{metric}_EXCL"], width, label="EXCL")
-    plt.xticks(x, merged["Model"])
-    plt.title(f"Comparação FULL vs EXCL – {metric}")
-    plt.xlabel("Modelo")
-    plt.ylabel(metric)
-    plt.legend()
-    plt.grid(axis="y", linestyle="--", alpha=0.4)
+    fig, ax = plt.subplots(figsize=(10, 5))
+    ax.bar(x - width/2, merged[f"{metric}_FULL"], width, label="FULL")
+    ax.bar(x + width/2, merged[f"{metric}_EXCL"], width, label="EXCL")
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(merged["Model"])
+
+    ylabel = metric if metric != "R2" else "R²"
+    format_abnt_axes(ax,
+                     xlabel="Modelo",
+                     ylabel=ylabel,
+                     show_legend=True)
+
     plt.tight_layout()
     outpath = outdir / f"COMPARE_FULL_EXCL_{metric}.png"
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
-    plt.close()
+    plt.close(fig)
 
 #%% Painel consolidado FULL vs EXCL
 def plot_panel_full_excl(df_full_res: pd.DataFrame,
@@ -218,17 +275,27 @@ def plot_panel_full_excl(df_full_res: pd.DataFrame,
         ax.bar(x + width/2, merged[f"{metric}_EXCL"], width, label="EXCL")
         ax.set_xticks(x)
         ax.set_xticklabels(merged["Model"])
-        ax.set_title(metric)
-        ax.grid(axis="y", linestyle="--", alpha=0.4)
 
+        ylabel = metric if metric != "R2" else "R²"
+        format_abnt_axes(ax,
+                         xlabel="Modelo",
+                         ylabel=ylabel,
+                         show_legend=False)
+
+    # Legenda no topo
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2)
-    fig.suptitle("Comparação FULL vs EXCL – Métricas por modelo", y=0.96)
-    plt.tight_layout(rect=[0, 0.05, 1, 0.94])
+    fig.legend(handles, labels,
+               loc="upper center",
+               ncol=2,
+               frameon=False,
+               prop={"family": "Arial", "size": 10},
+               bbox_to_anchor=(0.5, 1.02))
+
+    plt.tight_layout(rect=[0, 0.02, 1, 0.95])
 
     outpath = outdir / "PANEL_FULL_EXCL_metrics.png"
     plt.savefig(outpath, dpi=300, bbox_inches="tight")
-    plt.close()
+    plt.close(fig)
 
 #%% Função de análise para um único cenário
 def run_period_analysis(df: pd.DataFrame, tag: str) -> pd.DataFrame:
@@ -236,7 +303,7 @@ def run_period_analysis(df: pd.DataFrame, tag: str) -> pd.DataFrame:
     Executa o pipeline de modelagem para um cenário específico (FULL ou EXCL):
         - split temporal 80/20
         - scaler
-        - SVR, XGBoost, MLP, LSTM
+        - Regressão Linear, SVR, XGBoost, MLP, LSTM
         - métricas
         - gráficos Real vs Predito
         - gráficos de métricas
@@ -260,13 +327,19 @@ def run_period_analysis(df: pd.DataFrame, tag: str) -> pd.DataFrame:
     ytr, yte = y[:cut], y[cut:]
     dte = dates[cut:]
 
-    # Escalonamento (para SVR / MLP / LSTM)
+    # Escalonamento (para Linear, SVR, MLP, LSTM)
     scaler = StandardScaler()
     Xtr_s = scaler.fit_transform(Xtr)
     Xte_s = scaler.transform(Xte)
 
     results = []
     preds   = {}
+
+    # -------- Regressão Linear --------
+    lin = LinearRegression()
+    lin.fit(Xtr_s, ytr)
+    preds["Linear"] = lin.predict(Xte_s)
+    results.append(evaluate(yte, preds["Linear"], "Linear"))
 
     # -------- SVR --------
     svr = SVR(kernel="rbf", C=1.0, gamma="scale")

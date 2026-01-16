@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 01_extraction.py
@@ -22,11 +23,11 @@ END   = "2025-07-01"
 SERIES = {
     "selic_mensal":           4390,
     "ibcbr_dessaz":           24364,
-    "ibcbr_sem_ajuste":       24363,
+    #"ibcbr_sem_ajuste":       24363,
     "inadimpl_cartao_total":  25464,
     "ipca_mensal":            433,
     "comprometimento_renda":  29034,
-    "endividamento_familias": 29037,
+    #"endividamento_familias": 29037,
 }
 
 #%% Sessão HTTP
@@ -88,5 +89,6 @@ def main():
     base.to_parquet(out_parquet, index=False)
     print(f"OK -> {out_parquet}")
 
+#%% Execução
 if __name__ == "__main__":
     main()
